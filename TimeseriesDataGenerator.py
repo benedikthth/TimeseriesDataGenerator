@@ -169,9 +169,6 @@ class Generator:
 
         return dataset, labels
 
-    def generator(self):
-        while True:
-            yield self.load(1)
     
         
     def ThirdDimensionalize(self, data):
