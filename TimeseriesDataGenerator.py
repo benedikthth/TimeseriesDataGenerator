@@ -77,7 +77,7 @@ class Generator:
         self.temporal = temporal
 
 
-    def load(self, how_many=100, return_noise_over_time=False):  
+    def load(self, how_many, return_noise_over_time=False):  
         
         """
         Create X and Y from the settings supplied in the constructor.
@@ -169,6 +169,10 @@ class Generator:
 
         return dataset, labels
 
+    def generator(self):
+        while True:
+            yield self.load(1)
+    
         
     def ThirdDimensionalize(self, data):
         '''Turn 2d data into a 3d data where the shape is (batch, time, feateures)
