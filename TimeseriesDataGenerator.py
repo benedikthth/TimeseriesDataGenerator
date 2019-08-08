@@ -4,7 +4,7 @@ import numpy as np
 import random
 from noise._perlin import noise1 as perlin
 from timeit import default_timer as timer
-
+from functools import reduce
 
 
  
@@ -21,12 +21,12 @@ class Generator:
             num_freqs: how many frequencies are overlaid on eachother.\n
             num_outputs: how many predictions to make. First prediction will be sine of stronges amplitude.\n
             variant_over_time (bool): Should the noise strength change over time?\n
-            amplitude_dropoff: how much less amplitude the subsequent sine waves will have. (sine_i * amplitude_dropoff^i)\n
+            amplitude_dropoff_range: ([low, high]) the amplitude dropoff. A random value-array in the range passed will be generated, and sine_i will have it's amplitude multiplied with the product of rand_array[:i] 
             temporal: (bool) is the data in 3 dimensions? (useful for lstms etc.)
-            generator_settings: Object containing all these settings. Must contain all settings, will overwrite all other settings.\n
-            st_deviation: standard deviation of additive zero mean noise  
+            st_deviation: ([low, high]) standard deviation of additive zero mean noise  
             sampling_frequency: how many measurements are made each second.
             sequence_length: length of each segment loaded by `load`
+            generator_settings: Object containing all these settings. Must contain all settings, will overwrite all other settings.\n
         Returns:
             triple contining labels(list of numbers), data (list of lists of data points)
         """
@@ -34,16 +34,17 @@ class Generator:
 
 
         defaults =  {
-            'num_freqs': 1,
-            'num_outputs': 1,
-            'variant_over_time': False,
-            'amplitude_dropoff': 0.5,
-            'st_deviation': 1,
-            'sequence_length': 30,
-            'freq_range': (2.5, 50), 
-            'sampling_frequency':100,
-            'temporal':False,
+            'num_freqs': num_freqs,
+            'num_outputs': num_outputs,
+            'variant_over_time': variant_over_time,
+            'amplitude_dropoff': amplitude_dropoff,
+            'st_deviation': st_deviation,
+            'sequence_length': sequence_length,
+            'freq_range': freq_range, 
+            'sampling_frequency': sampling_frequency,
+            'temporal':temporal,
         }
+
 
         if settings:
             for i in defaults:
@@ -68,8 +69,15 @@ class Generator:
         self.num_freqs = num_freqs
         self.num_outputs = num_outputs
         self.variant_over_time = variant_over_time
+        #enforce type
+        if type(amplitude_dropoff).__name__ in ['float', 'int']:
+            amplitude_dropoff = [amplitude_dropoff, amplitude_dropoff]
         self.amplitude_dropoff = amplitude_dropoff 
+        #enforce type
+        if type(st_deviation).__name__ in ['float', 'int']:
+            st_deviation = [st_deviation, st_deviation]
         self.st_deviation = st_deviation
+
         self.sequence_length = sequence_length
         self.freq_range = freq_range
         self._frange = self.freq_range[1] - self.freq_range[0]
@@ -95,6 +103,8 @@ class Generator:
         offset_range = (0, 2*math.pi)
         _orange = offset_range[1] - offset_range[0]
 
+        _adrange = self.amplitude_dropoff[1] - self.amplitude_dropoff[0]
+
         if return_noise_over_time: 
             noise_ots = []
 
@@ -119,10 +129,14 @@ class Generator:
 
             #create a x range.
             y = np.arange(self.sequence_length, step=1/self.sampling_frequency)
-            #generate a frequency in the range of freq_range[0] - freq_range[1]
+            #generate a list of frequencies in the range of freq_range[0] - freq_range[1]
             freqs  = [(self._frange*random.random() ) + self.freq_range[0] for i in range(self.num_freqs)]
-            if self.num_freqs != 1:
-                labels.append(freqs[:self.num_freqs])
+            #  generate a list of amplitude dropoffs
+            amplitude_dropOffs = [ (_adrange*random.random())+self.amplitude_dropoff[0] for i in range(self.num_freqs)]
+            # each amp.do is multiplied by the ones before it to find the strength of frequency i 
+            amplitude_dropOffs = [ reduce(lambda x, y: x*y, amplitude_dropOffs[:i]) for i in range(1, len(amplitude_dropOffs)+1) ]
+            if self.num_outputs!= 1:
+                labels.append(freqs[:self.num_outputs])
             else:
                 labels.append(freqs[0])
             # the frequency of a normal sine is 1/2pi, so to get the 
@@ -138,19 +152,20 @@ class Generator:
             )
 
             #precompute amplitude dropoffs.
-            ads = [pow(self.amplitude_dropoff, i) for i in range(self.num_freqs)]
+            # ads = [pow(self.amplitude_dropoff, i) for i in range(self.num_freqs)]
             # create base sine. 
             x = [f(p, freqs[0], offsets[0]) for p in y]
             # add sines.
             if self.num_freqs != 1:
                 for i in range(1, self.num_freqs):
                     #create timeseries with this frequency, 
-                    f2 = [f(p, freqs[i], offsets[i])* ads[i] for p in y ]
+                    f2 = [f(p, freqs[i], offsets[i])* amplitude_dropOffs[i] for p in y ]
                     # add sine to base sine.
                     x = list(map(add, x, f2))
                     
-            #create random numbers normally distributed with 0 mean.
-            rands = np.random.normal(0, self.st_deviation, len(x))
+            #create random numbers normally distributed with 0 mean and a standard deviation.
+            rstd = (random.random()* (self.st_deviation[1] - self.st_deviation[0]))+self.st_deviation[0]
+            rands = np.random.normal(0, rstd, len(x))
             #multiply random noise by the perlin noise to gradually decrease, increase noise
             rands = list(map(mul, noise_ot, rands))
             #add the new nosie to the measurements.
@@ -193,10 +208,10 @@ if __name__ == '__main__':
     
     gs = {
         'variant_over_time':True, 
-        'num_freqs' : 1, 
-        'num_outputs':1, 
-        'amplitude_dropoff':0.5, 
-        'st_deviation':0, 
+        'num_freqs' : 4, 
+        'num_outputs':3, 
+        'amplitude_dropoff':[0.3, 0.7], 
+        'st_deviation':[0, 0], 
         'freq_range':(2.5, 10), 
         'sampling_frequency':100, 
     }
@@ -209,7 +224,8 @@ if __name__ == '__main__':
     # print(f'Generated 200 sequences in {end-start} seconds.')
 
     x, y, n = generator.load(4, return_noise_over_time=True)
-    
+
+    print(y ) 
      
     fig, ax = plt.subplots(2, 2)
     if type(y[0]) == np.float64:
