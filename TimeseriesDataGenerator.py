@@ -207,13 +207,13 @@ if __name__ == '__main__':
 
     
     gs = {
-        'variant_over_time':True, 
-        'num_freqs' : 4, 
-        'num_outputs':3, 
+        'variant_over_time':False, 
+        'num_freqs' : 1, 
+        'num_outputs':1, 
         'amplitude_dropoff':[0.3, 0.7], 
         'st_deviation':[0, 0], 
-        'freq_range':(2.5, 10), 
-        'sampling_frequency':100, 
+        'freq_range':(1, 1), 
+        'sampling_frequency':124, 
     }
 
     generator = Generator(settings=gs, verbose=True)
@@ -225,6 +225,8 @@ if __name__ == '__main__':
 
     x, y, n = generator.load(4, return_noise_over_time=True)
 
+    plt.plot(x[0][:124])
+    plt.show()
     print(y ) 
      
     fig, ax = plt.subplots(2, 2)
