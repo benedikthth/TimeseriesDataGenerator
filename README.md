@@ -69,13 +69,15 @@ generator = Generator(
     num_outputs=1, 
         #how many frequencies compose a label. 
 
-    amplitude_dropoff=0.5, 
+    amplitude_dropoff=(low, high) 
         #how much should each subsequent sine 
-        # drop off in amplitude. 
-
-    st_deviation=1, 
+        # drop off in amplitude. (sine_i will be sine*amp_do)
+        # where amp_do is an array where amp_do[i] is amp_do[i-1] * some dropoff in the specified range
+        # for a consistent amplitude dropoff, pass a float, or (x, x) where x is the desired amplitude dropoff.
+    st_deviation=(low, high), 
+        # Strengths of noise in standard deviations.
         #the strenght of the additive noise. 
-        # pass 0 for no noise.
+        # pass 0 or (0,0) for no noise.
 
     freq_range=(2.5, 50),
         #Range of frequencies, the default is
@@ -107,7 +109,7 @@ x, y = generator.load(3)
 # where x_i is time series data, and y_i is a list of frequencies.
 # x_i is an array of length (sequence_length * sampling_frequency)
 # y_i is an array of length (num_outputs)
-# x_i corresponds to y_i
+# y_i is the labels for x_i
 ```
 
 ## FFT_test.py

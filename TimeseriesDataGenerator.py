@@ -196,9 +196,22 @@ class Generator:
         return data
 
 
+    def OutputNeuronalize(self, y, neuron_names):
+        ''' Receives a list of list of labels, and a list of output neuron names
+        returns an object where the on names are keys for lists of neuron outputs
+        '''
 
+        if(len(y[0]) != len(neuron_names)):
+            print('Mismatch of neuron name lengths and number neuron of names.')
+            exit()
 
+        rval =  { }
 
+        for i in range(len(neuron_names)):
+            t = np.array([op[i] for op in y])
+            rval[neuron_names[i]] = t 
+
+        return rval
 
 if __name__ == '__main__':
 
@@ -225,9 +238,6 @@ if __name__ == '__main__':
 
     x, y, n = generator.load(4, return_noise_over_time=True)
 
-    plt.plot(x[0][:124])
-    plt.show()
-    print(y ) 
      
     fig, ax = plt.subplots(2, 2)
     if type(y[0]) == np.float64:
